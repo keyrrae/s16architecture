@@ -108,17 +108,19 @@ sim_trace = pyrtl.SimulationTrace()
 sim = pyrtl.FastSimulation(tracer=sim_trace)
 
 # stimuli
-#f = open('serv1', 'r')
+f = open('serv1.trace', 'r')
 predictor = AgreePredictor(PHT_size, BBS_size)
 correct_predictions = 0
 total_predictions = 0
 moving_correct_predictions = 0
-_ = sys.stdin.readline()  # throw away first line
+window_size = 200
+_ = f.readline()  # throw away first line
 i = 0
 predicts = []
 moving_rate = []
-#line = sys.readline()
-for line in sys.stdin:
+line = f.readline()
+
+while line:
     # get the two fields and convert them to integers
     [pc_val, branch_outcome] = [int(x, 0) for x in line.split()]
 
@@ -130,8 +132,6 @@ for line in sys.stdin:
         moving_correct_predictions += 1
     predictor.update(pc_val, this_prediction, branch_outcome)
     # print(this_prediction, branch_outcome)
-
-
 
     sim.step({pc_i: pc_val, outcome_i: branch_outcome})
     #print('i', i)
@@ -152,10 +152,21 @@ for line in sys.stdin:
     if i % 50000 == 0:
         print(("%.1f" % (100 * float(total_predictions) / 3811906)) + '%')
 
-    if i % 100 == 0:
-        moving_rate.append(100 * moving_correct_predictions / float(100))
+    if i % window_size == 0:
+        moving_rate.append(100 * moving_correct_predictions / float(window_size))
         moving_correct_predictions = 0
+    line = f.readline()
 
+print("\n\nWarm up:")
+i = 0
+for rate in moving_rate:
+    if i > 20:
+        break
+    print("%.1f" % rate)
+    i += 1
+
+print(predictor.__class__.__name__, 100 * correct_predictions / float(total_predictions))
+print('--- Branch Prediction Simulation ---')
 
 for i in range(total_predictions):
     #print(sim_trace.trace[prediction_o][i], predicts[i])
@@ -168,5 +179,6 @@ for i in range(total_predictions):
 
 #for i in range(100):
     #print(moving_rate[i])
-print(predictor.__class__.__name__, 100 * correct_predictions / float(total_predictions))
+
+print('PyRTL simulation result matched with the reference predictor.')
 
